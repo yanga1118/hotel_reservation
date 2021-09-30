@@ -28,7 +28,7 @@
 # 서비스 시나리오
 	
 [서비스 아키텍쳐]
-주문팀, 상품배송팀, 마케팅팀
+객실 관리, 결제, 마케팅팀
 
 [서비스 시나리오]
 
@@ -36,7 +36,7 @@
 
 1. 호텔의 객실 관리팀은 객실 정보를 등록한다.( pub/sub )
 
-2. 고객은 객실울 결제하고, 예약을 완료한다. ( Req/Res )
+2. 고객은 결제가 완료되어야 예약이 완료된다. ( Req/Res )
 
 3. 예약이 완료되면 호텔에 방이 charge 상태로 변경된다. ( pub/sub )
 
@@ -200,8 +200,8 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 ![주문완료검증](https://user-images.githubusercontent.com/88864433/133361542-bc0225f1-d540-42d8-ab1b-f9de9967e84a.PNG)
 
 ```
-- 고객이 물건을 주문하고 결제한다 (ok)
-- 결제가 완료되면 주문 내역이 배송팀에 전달된다 (ok)
+- 호텔의 객실 관리팀은 객실 정보를 등록한다. (ok)
+- 고객은 결제가 완료하여야, 예약이 완료된다. (ok)
 - 마케팅팀에서 쿠폰을 발행한다 (ok) 
 - 쿠폰이 발행된 것을 확인하고 배송을 시작한다 (ok)
 ```
@@ -243,106 +243,148 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 - 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 바운더리 컨텍스트 별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
 
 ```
-cd order
+cd room
 mvn spring-boot:run
 
-cd productdelivery 
+cd reservation 
 mvn spring-boot:run
 
-cd marketing
+cd payment
 mvn spring-boot:run 
 ```
 
 # DDD의 적용
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 데이터 접근 어댑터를 개발하였는가? 
 
-각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다. (주문(order), 배송(productdelivery), 마케팅(marketing)) 
+각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다. (객실관리(room), 예약(reservation), 결제(paymnet)) 
 
-주문 Entity (Order.java) 
+예약 Entity (Reservation.java) 
 ```
-@Entity
-@Table(name="Order_table")
-public class Order {
 
-    
+@Entity
+@Table(name="Reservation_table")
+public class Reservation {
+
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private String username;
-    private String address;
-    private String phoneNo;
-    private String productId;
-    private int qty; //type change
-    private String payStatus;
+    private String roomId;
+    private String roomNo;
+    private String roomStatus;
+    private String roomSize;
+    private String amenityInfo;
+    private String reservStatus;
+   
+    private Date createRoomDate;
+    private boolean payCompletedYn;
     private String userId;
-    private String orderStatus;
-    private Date orderDate;
-    private String productName;
-    private Long productPrice;
-    private String couponId;
-    private String couponKind;
-    private String couponUseYn;
-
+    private Date reservDate;
+    private String userName;
+    private String peopleQty;
+    private Date payDate;
+    private Long amount;
+    private String payMethod;
+    private Date reservStartDate;
+    private Date reservEndDate;
+    
+    private static final String RESERVATION_APPROVED = "Approved";
+    private static final String RESERVATION_COMPLETED = "Completed";
+    private static final String RESERVATION_CACELREQUEST = "CancelRequest";
+    private static final String RESERVATION_CANCLED = "CancelCompleted";
+    
+    
     @PostPersist
     public void onPostPersist(){
-    	
-         Logger logger = LoggerFactory.getLogger(this.getClass());
+      
+        Logger logger = LoggerFactory.getLogger(this.getClass());
+        
+        //  Thread.sleep(5000);
 
-    	
-        OrderPlaced orderPlaced = new OrderPlaced();
-        BeanUtils.copyProperties(this, orderPlaced);
-        orderPlaced.publishAfterCommit();
-        System.out.println("\n\n##### OrderService : onPostPersist()" + "\n\n");
-        System.out.println("\n\n##### orderplace : "+orderPlaced.toJson() + "\n\n");
-        System.out.println("\n\n##### productid : "+this.productId + "\n\n");
-        logger.debug("OrderService");
+         if(this.reservStatus.equals(RESERVATION_APPROVED) ){
+          hotelreservation.external.Payment payment = new hotelreservation.external.Payment();
+
+          payment.setUserId(this.userId);
+          payment.setUserName(this.userName);
+          payment.setRoomNo(this.roomNo);
+          payment.setAmount(this.amount);
+          payment.setPayMethod(this.payMethod);
+          payment.setPayCompltedYn(this.payCompletedYn);
+          payment.setPayStatus("PayReqeust");
+          payment.setReservEndDate(this.reservStartDate);
+          payment.setReservEndDate(this.reservEndDate);
+
+			....생략 
+            }
+        }else if(this.reservStatus.equals(RESERVATION_CACELREQUEST) ){
+            ReservationCancelRequested reservationCancelRequested = new ReservationCancelRequested();
+            BeanUtils.copyProperties(this, reservationCancelRequested);
+            reservationCancelRequested.publishAfterCommit();
+
+        }else if(this.reservStatus.equals(RESERVATION_CANCLED)){
+            ReservationCanceled reservationCanceled = new ReservationCanceled();
+            BeanUtils.copyProperties(this, reservationCanceled);
+            System.out.println("YYYYYYYYYYYYYYYYYY");
+            reservationCanceled.publishAfterCommit();
+        }
     }
 
-    @PostUpdate
-    public void onPostUpdate() {
-    	
-    	OrderCanceled orderCanceled = new OrderCanceled();
-        BeanUtils.copyProperties(this, orderCanceled);
-        orderCanceled.publishAfterCommit();
-    }
-    
-    public Long getId() {
-        return id;
-    }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-    public String getUsername() {
-        return username;
-    }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
-    
 ....생략 
 
 ```
 
 Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 하였고 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
 
-OrderRepository.java
+ReservationRepository.java
 
 ```
-import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-public interface OrderRepository extends PagingAndSortingRepository<Order, Long>{
-	
+
+@RepositoryRestResource(collectionResourceRel="reservations", path="reservations")
+public interface ReservationRepository extends CrudRepository<Reservation, Long>{
+
+    List<Reservation> findByRoomId(String RoomId);
 }
-```
-
-배송팀의 StockDelivery.java
 
 ```
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+
+결제 Payment.java
+
+```
+@Entity
+@Table(name="Payment_table")
+public class Payment {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id;
+    private String userId;
+    private String userName;
+    private String roomNo;
+    private String payStatus;
+    private boolean payCompletedYn;
+    private Date payDate;
+    private Long amount;
+    private String payMethod;
+
+    @PostPersist
+    public void onPostPersist(){
+
+      //결제 요청
+      if(this.payStatus.equals("PayReqeust")){
+        PayCompleted payCompleted = new PayCompleted();
+        this.setPayCompletedYn(true);
+        this.setPayStatus("PayCompleted");
+        BeanUtils.copyProperties(this, payCompleted);
+        payCompleted.publishAfterCommit();
+
+      }else if(this.payStatus.equals("PayCanceled")){  //취소 요청
+        ...생략
+
+      }else{
+          System.out.println("Not Alloved Status");
+      }
+    }
 ```
 ```
 @Entity
