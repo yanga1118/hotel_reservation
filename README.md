@@ -946,33 +946,50 @@ cache:
 ```
 
 # 동기식 호출 / Circuit Breaker / 장애격리
-오더 요청이 과도할 경우 서킷 브레이크를 통해 장애 격리를 하려고 한다.
+예약이 요청이 많아 결제 쪽에 지연이 많이 될 겨우  요청이 과도할 경우 Circuit Breaker를 통해 장애 격리를 진행하고자 한다.
 
 - 부하테스터 siege툴을 통한 Circuit Breaker 동작 확인 : 
-- 동시사용자 50명
+- 동시사용자 100명
 - 30초간 실시
-- marketing 서비스의 req/res 호출 후 저장전 sleep 을 진행한다.
+- 결제 서비스의 req/res 호출 후 저장 (@prepost) 전에 Thread sleep 을 진행한다.
 
 ```
-siege -c50 -t30S -r10 -v --content-type "application/json" 'http://localhost:8081/stockDeliveries POST {"orderId": 1, "orderStatus": "test", "userName": "test", "qty": 10, "deliveryStatus": "delivery Started"}'
+siege -c100 -t30S -r10 -v --content-type "application/json" 'http://reservation:8080/reservations POST {"roomId": "101",  "roomNo": "101", "reservStatus" : "Approved", "roomStatus":"Empty", "createRoomDate":"2019-01-01" , "payCompletedYn":"false", "userId":"0001",    "reservDate" : "2021-09-30" , "userName" : "YANG" ,"peopleQty" : "3", "payDate": "2021-09-30", "amount": "200000", "payMethod":"card" , "reservStartDate":"2021-11-01" ,"reservEndDate": "2021-11-03"}'
 ```
 
+```
+@EnableCircuitBreaker
+@FeignClient(name="payment", url = "${api.Payment.url}", fallback = PaymentServiceFallback.class)
+public interface PaymentService {
+    @RequestMapping(method=RequestMethod.POST, path="/payRequest")
+    public boolean pay(@RequestBody Payment payment);
+}
 
-![ciruit1](https://user-images.githubusercontent.com/88864433/133549822-19fa0ac7-6876-4b76-b2fb-9d64e0feace3.PNG)
+```
 
-![circuit2](https://user-images.githubusercontent.com/88864433/133549882-3b653f1e-6c84-4abb-b073-b5cca21ddda2.PNG)
+```
+@Component
+public class PaymentServiceFallback implements PaymentService {
+ 
+    @Override
+    public boolean pay(Payment payment) {
+        // TODO Auto-generated method stub
+        System.out.println("***************Circuit Breaker***********************************");
+        System.out.println("Circuit breaker has been opened. Thank you for your patience ");
+        System.out.println("***************Circuit Breaker***********************************");
 
-![circuit3](https://user-images.githubusercontent.com/88864433/133549892-99e332ac-18fe-4b4e-9737-b4341b66985f.PNG)
+        return false;
+    }
 
-![circuit4](https://user-images.githubusercontent.com/88864433/133550076-1789913a-d545-4c18-9fc3-3afe0e03c8e2.PNG)
+}
+```
 
-![circuit5](https://user-images.githubusercontent.com/88864433/133550122-22b8de48-faeb-4079-8bcf-9d6b48f5a457.PNG)
+![circuit_breaker 결과](https://user-images.githubusercontent.com/43808557/135442840-89e7a46d-aa5f-4afa-92cb-397ef185e944.png)
 
 
 
 # Autoscale(HPA)
 앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다.
-
 
 ![hpa1](https://user-images.githubusercontent.com/88864433/133547537-2a3d5954-305b-443e-9f06-ecd0913fdc1a.PNG)
 
