@@ -715,75 +715,79 @@ Order aggegate의 값들을 추가한 이후 주문완료됨(OrderPlaced) 이벤
 # CQRS
 - CQRS: Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능한가?
 
-주문/배송상태가 바뀔 때마다 고객이 현재 상태를 확인할 수 있어야 한다는 요구사항에 따라 주문 서비스 내에 OrderStatus View를 모델링하였다
+예약/결제의 요청 상태가 변경될 때마다 고객이 현재 예약 상태를 확인하고, 조회할 수 있도록 예약 서비스  내에 Reservation View를 모델링하였다
 
-OrderStatus.java 
+ReservationView.java 
 ```
-@Entity
-@Table(name="OrderStatus_table")
-public class OrderStatus {
 
-        @Id
-        @GeneratedValue(strategy=GenerationType.AUTO)
-        private Long id;
-        private String username;
-        private String userId;
-        private Long orderId;
-        private String orderStatus;
-        private String productId;
-        private String productName;
-        private Long productPrice;
-        private int qty; 
-        private String couponId;
-        private String couponKind;
-        private String couponUseYn;
+@Entity
+@Table(name="ReservationView_table")
+public class ReservationView {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id;
+    private String roomId;
+    private String roomNo;
+    private String roomStatus;
+    private String roomSize;
+    private String amenityInfo;
+    private String reservStatus;
+
+    private Date createRoomDate;
+    private boolean payCompletedYn;
+    private String userId;
+    private Date reservDate;
+    private String userName;
+    private String peopleQty;
+    private Date payDate;
+    private Long payAmount;
+    private String payMethod;
+    private Date reservStartDate;
+    private Date reservEndDate;
+ private static final String RESERVATION_APPROVED = "Approved";
+    private static final String RESERVATION_COMPLETED = "Completed";
+    
+    
 .... 생략 
 ```
 
-OrderStatusViewHandler 를 통해 구현
-
-Pub/Sub 기반으로 별도 ProductPage_table 테이블에 저장되도록 구현하였다.
-
+ReservationViewHandler 를 통해 Pub/Sub 기반으로 다른 Aggreate와 분리하여
+CQRS가 가능하도록 구현하였다.
 ```
-@Service
-public class OrderStatusViewHandler {
 
-
-    @Autowired
-    private OrderStatusRepository orderStatusRepository;
-    
     @StreamListener(KafkaProcessor.INPUT)
-    public void whenOrderPlaced_then_CREATE_1 (@Payload OrderPlaced orderPlaced) {
+    public void whenReservationCompleted_then_CREATE_1 (@Payload ReservationCompleted reservationCompleted) {
         try {
 
-            if (!orderPlaced.validate()) return;
+            if (!reservationCompleted.validate()) return;
 
             // view 객체 생성
-            OrderStatus orderStatus = new OrderStatus();
-            orderStatus.setUsername(orderPlaced.getUsername());
-            orderStatus.setUserId(orderPlaced.getUserId());
-            orderStatus.setOrderId(orderPlaced.getId());
-            orderStatus.setOrderStatus("OrderPlaced");
-            orderStatus.setProductId(orderPlaced.getProductId());
-            orderStatus.setProductName(orderPlaced.getProductName());
-            orderStatus.setProductPrice(orderPlaced.getProductPrice());
-            orderStatus.setQty(orderPlaced.getQty());
-           
-            orderStatusRepository.save(orderStatus);
-            
-            System.out.println("\n\n##### OrderStatus : whenOrderPlaced_then_CREATE_1" + "\n\n");
+            ReservationView reservationView = new ReservationView();
+            // view 객체에 이벤트의 Value 를 set 함
+            reservationView.setRoomId(reservationCompleted.getRoomId());
+            reservationView.setRoomNo(reservationCompleted.getRoomNo());
+            reservationView.setPayAmount(reservationCompleted.getAmount());
+            reservationView.setReservDate(reservationCompleted.getReservDate());
+            reservationView.setPayDate(reservationCompleted.getPayDate());
+            ... 생략
+            reservationView.setPayMethod(reservationCompleted.getPayMethod());
+            reservationView.setPeopleQty(reservationCompleted.getPeopleQty());
+            reservationView.setPayMethod(reservationCompleted.getPayMethod());
+            reservationView.setPayCompletedYn(reservationCompleted.getPayCompletedYn());
+            reservationView.setUserId(reservationCompleted.getUserId());
+
+            reservationViewRepository.save(reservationView);
 
         }catch (Exception e){
             e.printStackTrace();
         }
     }
+
 ```
+객실 예약시 결제 및 예약 정보에 대해서 Pub/Sub 기반으로 reservationView에 데이터가 생성되며,예약 완료, 결제 취소 요청, 예약 취소 완료를구현하였다.
 
-주문에 대한 결제완료(PayStatus) 시 orderId를 키값으로 OrderStatus 데이터도 생성되며 (주문과 결제를 동시에 처리했을 때 배송을 시작하므로)
-
-"결제완료(주문완료), 주문접수, 배송시작, 결제취소(주문취소)"의 이벤트에 따라 주문상태가 업데이트되도록 모델링하였다.
-
-
+결제 및 예약이 완료되면 해당 정보를 확인할 수 있다.
 
 
 - CQRS 테스트 
@@ -840,27 +844,28 @@ productdelivery는 주문과 쿠폰발행/취소를 중간에서 모두 파악�
 
 - application.yml
 ```
+
 spring:
   profiles: docker
   cloud:
     gateway:
       routes:
-        - id: productdelivery
-          uri: http://productdelivery:8080
+        - id: reservation
+          uri: http://reservation:8080
           predicates:
-            - Path=/stockDeliveries/** 
-        - id: order
-          uri: http://order:8080
+            - Path=/reservations/**
+        - id: room
+          uri: http://room:8080
           predicates:
-            - Path=/orders/**
-        - id: orderstatus
-          uri: http://orderstatus:8080
+            - Path=/roomInfos/** 
+        - id: payment
+          uri: http://payment:8080
           predicates:
-            - Path=/orderStatus/**
-        - id: marketing
-          uri: http://marketing:8080
+            - Path=/payments/** 
+        - id: reservationview
+          uri: http://reservationview:8080
           predicates:
-            - Path=/promotes/** 
+            - Path=/reservationviews/**     
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -890,32 +895,30 @@ Gateway의 application.yml이며, 마이크로서비스들의 진입점을 세�
 
 - CodeBuild 설정
 
-![CODEBUILD1](https://user-images.githubusercontent.com/88864433/133469657-2b250c1e-777d-4d18-8ae9-c631ba9fa9f6.PNG)
+![Code_Build_세부정보](https://user-images.githubusercontent.com/43808557/135446598-8518551c-316a-449a-b663-c4056b84b432.png)
 
 
-![codebuild2](https://user-images.githubusercontent.com/88864433/133469760-d091efc6-5d09-4c25-a324-337f0b5e0d87.PNG)
+![IAM_정책추가(Codebuild)](https://user-images.githubusercontent.com/43808557/135446640-d9167c2c-8bf8-44d8-a623-774e3dfe65ad.png)
+
 
 - 빌드 환경 설정 
-환경변수(KUBE_URL, KUBE_TOKEN, repository 등 설정) 
 
-![codebuild_환경변수](https://user-images.githubusercontent.com/88864433/133470474-c69371cd-2ed6-49f1-adb5-8d1f7ac4d056.PNG)
+환경변수 Setting
 
+![Code_build 환경변수](https://user-images.githubusercontent.com/43808557/135446798-068aed60-d21b-48ea-95cb-905579e05b40.png)
 
 - buildspec.yml
 
 ```
-version: 0.2
-​
+ersion: 0.2
+
 env:
   variables:
-    IMAGE_REPO_NAME: "order"
+    IMAGE_REPO_NAME: "payment"
     CODEBUILD_RESOLVED_SOURCE_VERSION: "latest"
-​
+
 phases:
   install:
-    commands:    
-      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
-      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
     runtime-versions:
       java: corretto11
       docker: 18
@@ -923,7 +926,8 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - echo $IMAGE_REPO_NAME
-      - echo $AWS_ACCOUNT_ID
+      - echo $AWS_ACCOUNT_IDecho $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - 
       - echo $AWS_DEFAULT_REGION
       - echo $CODEBUILD_RESOLVED_SOURCE_VERSION
       - echo start command
@@ -933,17 +937,22 @@ phases:
       - echo Build started on `date`
       - echo Building the Docker image...
       - mvn package -Dmaven.test.skip=true
+      - echo $pwd
       - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION  .
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker image...
+      - echo $pwd
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
-​
+
 cache:
   paths:
-    - '/root/.m2/**/*' 
+    - '/root/.m2/**/*'
 ```
+
+![code_build_결과](https://user-images.githubusercontent.com/43808557/135447122-8efc0956-35d1-46d8-83b7-07ded5a1bc73.png)
+
 
 # 동기식 호출 / Circuit Breaker / 장애격리
 예약이 요청이 많아 결제 쪽에 지연이 많이 될 겨우  요청이 과도할 경우 Circuit Breaker를 통해 장애 격리를 진행하고자 한다.
