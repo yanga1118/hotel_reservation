@@ -1082,23 +1082,33 @@ Payment의 deployment.yml 파일의 이미지 버전을 v1을 적용하고 siege
 
 # Self-healing (Liveness Probe)
 
-- port 및 정보를 잘못된 값으로 변경하여 yml 적용
+  spec:
+      containers:
+        - name: payment
+          image: 050229413886.dkr.ecr.ap-northeast-2.amazonaws.com/payment:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+          ....
+          livenessProbe:
+            httpGet:
+              path: '/actuator/health'
+              port: 8080
+            initialDelaySeconds: 120
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 5
 
-![liveness1](https://user-images.githubusercontent.com/88864433/133550800-5c481182-5e46-4572-b5c8-738fe5356653.PNG)
-
-- 해당 yml을 배포
-
-![liveness2](https://user-images.githubusercontent.com/88864433/133550866-21e9ca23-9d2c-41a0-bc60-0f6a7596279f.PNG)
+- 잘못된 포트로 변경하여 yml을 배포
+ : port -> 9999로 변경하여 배포
+ 
+ ![liveness_변경](https://user-images.githubusercontent.com/43808557/135562522-32ad413b-9411-463e-9a30-01623a73d27e.PNG)
 
 - 잘못된 경로와 포트여서 kubelet이 자동으로 컨테이너를 재시작하였다. 
 
-![LIVENESS4](https://user-images.githubusercontent.com/88864433/133563189-377ef1fe-7e86-4ea6-b387-87739edcdf61.PNG)
+![liveness_최종결과](https://user-images.githubusercontent.com/43808557/135562521-3a0caf0e-48b3-4799-baf5-60053f59daf2.PNG)
 
 - POD가 재시작되었다. 
-
-![liveness3](https://user-images.githubusercontent.com/88864433/133550970-0f13cf46-7b96-4034-aeaa-c24750597973.PNG)
-
-
 
 # 운영유연성
 - 데이터 저장소를 분리하기 위한 Persistence Volume과 Persistence Volume Claim을 적절히 사용하였는가?
