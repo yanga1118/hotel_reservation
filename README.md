@@ -140,20 +140,21 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 
 ### 이벤트 도출
 
-![1](https://user-images.githubusercontent.com/88864433/133356420-db8f0cf8-a3f6-4d24-8242-e9e739401045.PNG)
+![DDD_1](https://user-images.githubusercontent.com/43808557/135551164-7ea3caee-7d59-4388-93eb-5761c1acae25.PNG)
 
 ```
-1차적으로 필요하다고 생각되는 이벤트를 도출하였다 
+1차적으로 필요하다고 생각되는 이벤트를 도출
 ``` 
 
 ### 부적격 이벤트 탈락
 
-![2](https://user-images.githubusercontent.com/88864433/133356470-ee9c68e5-50c7-45b8-8bf2-15b9ee408036.PNG)
+![DDD2](https://user-images.githubusercontent.com/43808557/135542419-fdadb222-0d09-474c-bd84-ddeda717b4bf.PNG)
 
 ```
 - 과정 중 도출된 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
-- ‘재고가 충족됨’, ‘재고가 부족함’ 은 배송 이벤트를 수행하기 위한 내용에 가까우므로 이벤트에서 제외
-- 주문과 결제는 동시에 이루어진다고 봐서 주문과 결제를 묶음 
+- ‘예약 변경됨’, ‘예약 변경 요청됨’ 은 현재 해당 시나리오를 수행하는데 영향이 없을 것으로 예상되어 제외
+- ‘예약 요청됨’, ‘예약 취소 요청됨’ ‘결제 요청됨’, ‘결제 취소 요청됨’ 은 Command의 성격이라 이벤트에서는 제외
+
 ```
 
 ![3](https://user-images.githubusercontent.com/88864433/133356499-0fa6c5d6-b0ae-48a5-8e9c-06a5bac07ea1.PNG)
@@ -168,7 +169,7 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 ![5-3](https://user-images.githubusercontent.com/88864433/133556981-a8bfb142-2690-442d-bc92-8d89a3307472.PNG)
  
 ``` 
-- 고객의 주문후 배송팀의 배송관리, 마케팅의 쿠폰관리는 command와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 묶어줌
+- 고객의 예약 관리 결제 관리, 호텔의 객실관리는 command와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 묶어줌
 ```
 
 ### 바운디드 컨텍스트로 묶기
