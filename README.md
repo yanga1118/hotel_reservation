@@ -215,7 +215,7 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 
 ### 비기능 요구사항에 대한 검증 (5개가 맞는지 검토 필요)
 
-![비기능 요구](https://user-images.githubusercontent.com/43808557/135558724-98d29a9b-587d-4769-9210-75291d353481.PNG)
+![비동기식구현](https://user-images.githubusercontent.com/43808557/135571663-5f60fdde-db01-42d0-9e8b-62805bbeb465.PNG)
 
 ```
 1. [설계/구현]Req/Resp : 결제가 반드시 완료되야 예약이 완료된다.
