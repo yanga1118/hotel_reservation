@@ -1,6 +1,6 @@
 # 개인과제 - 호텔예약시스템
 
-![12번가](https://user-images.githubusercontent.com/88864433/133467597-709524b1-4613-4dab-bc57-948f433ad565.png)
+![hotel_reservation](https://user-images.githubusercontent.com/43808557/135555012-6b055ecf-d165-4939-9882-b917f909ee15.png)
 ---------------------------------
 
 # Table of contents
