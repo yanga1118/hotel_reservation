@@ -28,7 +28,7 @@
 # 서비스 시나리오
 	
 [서비스 아키텍쳐]
-객실 관리, 예약 , 결제 관리
+객실 관리, 예약 관리 , 결제 관리
 
 [서비스 시나리오]
 
@@ -38,7 +38,7 @@
 
 2. 고객은 결제가 완료되어야 예약이 완료된다. ( Req/Res )
 
-3. 예약이 완료되면 호텔에 방이 charge 상태로 변경된다. ( pub/sub )
+3. 예약이 완료되면 호텔의 객실이 charge 상태로 변경된다. ( pub/sub )
 
 4. 고객의 객실 예약 상태를 언제든지 조회할 수 있다. (CQRS)
 
@@ -46,13 +46,13 @@
 
 6. 고객이 예약을 취소하면 결제 취소가 된다.( pub/sub )
 
-7. 결제가 취소되어야 최종적으로 예약 취소가 완료된다. ( pub/sub )
+7. 결제가 취소 완료되어야 최종적으로 예약 취소가 완료된다. ( pub/sub )
 
 
 
 나. 비기능적 요구사항
 
-1. [설계/구현]Req/Resp : 객실 예약시 결제가 완료되어야 예약이 완료된다.
+1. [설계/구현]Req/Resp : 객실 예약시 결제가 반드시 완료되어야 예약이 완료된다.
 
 2. [설계/구현]CQRS : 고객의 객실 예약 상태를 언제든지 조회할 수 있다.
 
@@ -201,7 +201,8 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 ```
 - 호텔의 객실 관리팀은 객실 정보를 등록한다. (ok)
 - 고객은 결제가 완료하여야, 예약이 완료된다. (ok)
--  예약이 완료되면 호텔에 방이 charge 상태로 변경된다. ( ok)
+- 예약이 완료되면 호텔에 방이 charge 상태로 변경된다. ( ok)
+
 ```
 ![시나리오2](https://user-images.githubusercontent.com/43808557/135552693-c0935e08-7f4a-4c93-8a96-460a6c76a2e8.png)
 
@@ -397,11 +398,8 @@ public interface PaymentRepository extends CrudRepository<Payment, Long>{
 }
 
 ```
-
 호텔의 Room Enitity
-
 ``` 
-
 @Entity
 @Table(name="RoomInfo_table")
 public class RoomInfo {
@@ -429,7 +427,6 @@ public class RoomInfo {
 
 ```
 RoomInfoRepository.java
-
 ```
 package hotelreservation;
 
@@ -444,27 +441,29 @@ public interface RoomInfoRepository extends PagingAndSortingRepository<RoomInfo,
 ```
 
 - 분석단계에서의 유비쿼터스 랭귀지 (업무현장에서 쓰는 용어) 를 사용하여 소스코드가 서술되었는가?
-가능한 현업에서 많이 사용하는 Java와 Spring 기반의 기술을 사용하여 소스 
+가능한 현업에서 많이 사용하는 Java와 Spring 기반의 기술을 사용하여 소스코드를 구현하였다.
 
 - 적용 후 Rest API의 테스트
-주문 결제 후 productdelivery 주문 접수하기 POST
 
 ```
 [시나리오 1]
-http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders address=“Seoul” productId=“1001" payStatus=“Y” phoneNo=“01011110000" productName=“Mac” productPrice=3000000 qty=1 userId=“goodman” username=“John”
-http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders address=“England” productId=“2001” payStatus=“Y” phoneNo=“0102220000” productName=“gram” productPrice=9000000 qty=1 userId=“gentleman” username=“John”
-http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders address=“USA” productId=“3001" payStatus=“Y” phoneNo=“01030000" productName=“Mac” productPrice=3000000 qty=1 userId=“goodman” username=“John”
-http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders address=“USA” productId=“3001” payStatus=“Y” phoneNo=“01030000” productName=“Mac” productPrice=3000000 qty=1 userId=“last test” username=“last test”
+- 방 등록
+http POST  http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/roomInfos roomId=101 roomNo=101 viewInfo="OceanView" status="NEW" roomSize="84" createDate="2021-09-30" amenityInfo="TV"
+
+- 예약 
+http POST  http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservations  roomId=A0001 roomNo="101" reservStatus="Approved"  roomStatus="Empty" createRoomDate="2019-01-01"  payCompletedYn=false userId=0001 reservDate="2021-09-30"  userName="YANG" peopleQty=3 payDate="2021-09-30" amount="200000" payMethod="card"  reservStartDate="2021-11-01" reservEndDate="2021-11-03"  roomStatus="Empty" createRoomDate="2019-01-01" 
+
 [시나리오 2]
+- 예약 취소 요청
 http POST http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservations roomId=A0001 roomNo="101" reservStatus="CancelRequest" userId=0001 reservDate="2021-09-30"  userName="YANG" peopleQty=3 payDate="2021-09-30" amount="200000"  payCompletedYn=true  payMethod="card"  reservStartDate="2021-11-01" reservEndDate="2021-11-03"
 
 [체크]
-http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders
-http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orderStatus
-http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/stockDeliveries
-http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/promotes
-```
+http GET http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/roomInfos
+http GET http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservations
+http GET http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/payment
+http GET http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservationViews
 
+```
 
 # 동기식 호출
 
@@ -695,6 +694,7 @@ public class PolicyHandler{
 ```
 
 # SAGA 패턴
+
 - 취소에 따른 보상 트랜잭션을 설계하였는가?(Saga Pattern)
 
 결제 관리 서비스의 기능을 수행할 수 없더라도 예약 취소는 항상받을 수 있게끔 설계하였다. 
@@ -720,6 +720,7 @@ Reservation aggegate의 값들을 추가한 이후 예약 취소 요청(Reservat
 
 
 # CQRS
+
 - CQRS: Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능한가?
 
 예약/결제의 요청 상태가 변경될 때마다 고객이 현재 예약 상태를 확인하고, 조회할 수 있도록 예약 서비스  내에 Reservation View를 모델링하였다
@@ -759,8 +760,7 @@ public class ReservationView {
 .... 생략 
 ```
 
-ReservationViewHandler 를 통해 Pub/Sub 기반으로 다른 Aggreate와 분리하여
-CQRS가 가능하도록 구현하였다.
+ReservationViewHandler 를 통해 Pub/Sub 기반으로 다른 Aggreate와 분리하여 CQRS가 가능하도록 구현하였다.
 ```
 
     @StreamListener(KafkaProcessor.INPUT)
@@ -794,14 +794,13 @@ CQRS가 가능하도록 구현하였다.
 ```
 객실 예약시 결제 및 예약 정보에 대해서 Pub/Sub 기반으로 reservationView에 데이터가 생성되며,예약 완료, 결제 취소 요청, 예약 취소 완료를구현하였다.
 
-결제 및 예약이 완료되면 해당 정보를 확인할 수 있다.
+결제 및 예약이 완료되면 해당 정보를 reservationView에서 확인할 수 있다.
 
 
 ```
 - 예약 완료 후 reservationView 확인
 
 http GET http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservationViews/2
-
 
 ```
 
@@ -863,9 +862,6 @@ Gateway의 application.yml이며, 마이크로서비스들의 진입점을 세�
 
 - (CI/CD 설정) BuildSpec.yml 사용 각 MSA 구현물은 git의 source repository 에 구성되었고, AWS의 CodeBuild를 활용하여 무정지 CI/CD를 설정하였다.
 
-- Repository 화면 캡쳐 
-
-![CICD](https://user-images.githubusercontent.com/88864433/133468925-a9ba1fec-8331-4a68-a0b7-2b570e4182de.PNG)
 
 - CodeBuild 설정
 
