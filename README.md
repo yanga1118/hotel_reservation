@@ -467,7 +467,7 @@ http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.a
 ```
 
 
-# 동기식 호출과 Fallback 처리
+# 동기식 호출
 
 (Request-Response 방식의 서비스 중심 아키텍처 구현)
 
@@ -475,7 +475,7 @@ http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.a
 
 요구사항대로 결제가 완료되어야 예약이 완료되도록 구현한다.
 
-reservaiontin.java Entity Class에 @PostPersist로 쿠폰 발행 후에 배송을 시작하도록 처리하였다.
+reservaiontin.java Entity Class에 @PostPersist로 결제 완료 Req/Resp후에 예약이 완료되도록 아였다.
 
 ``` 
     
@@ -575,90 +575,119 @@ public class PaymentServiceFallback implements PaymentService {
 ```
 
 
-# 비동기식 호출과 Eventual Consistency (작성완료)
+# 비동기식 호출과 Eventual Consistency 
 
 (이벤트 드리븐 아키텍처)
 
 - 카프카를 이용하여 PubSub 으로 하나 이상의 서비스가 연동되었는가?
 
 예약 취소 요청 후 결제 취소 후에 이를 다시 예약팀에 결제 취소배송팀에 알려주는 트랜잭션은 Pub/Sub 관계로 구현하였다.
-아래는 주문/주문취소 이벤트를 통해 kafka를 통해 배송팀 서비스에 연계받는 코드 내용이다. 
+아래는 예약 관리 시스템에서 예약 취소 요청 이벤트 발생, 결제 관리 시스템에서 결제 취소 완료 이벤트를 kafka를 통해 예약 관리 서비스에 다시 연계받는 코드 내용이다. 
 
 ```
 
     @PostPersist
     public void onPostPersist(){
-    	
-         Logger logger = LoggerFactory.getLogger(this.getClass());
+      
+	if(this.reservStatus.equals(RESERVATION_APPROVED) ){
+          ....중략
+                }
+            }
+        }else if(this.reservStatus.equals(RESERVATION_CACELREQUEST) ){ //예약 취소 요청 발생 Kafka에 전달
+            ReservationCancelRequested reservationCancelRequested = new ReservationCancelRequested();
+            BeanUtils.copyProperties(this, reservationCancelRequested);
+            reservationCancelRequested.publishAfterCommit();
 
-    	
-        OrderPlaced orderPlaced = new OrderPlaced();
-        BeanUtils.copyProperties(this, orderPlaced);
-        orderPlaced.publishAfterCommit();
-        System.out.println("\n\n##### OrderService : onPostPersist()" + "\n\n");
-        System.out.println("\n\n##### orderplace : "+orderPlaced.toJson() + "\n\n");
-        System.out.println("\n\n##### productid : "+this.productId + "\n\n");
-        logger.debug("OrderService");
-    }
-
-    @PostUpdate
-    public void onPostUpdate() {
-    	
-    	OrderCanceled orderCanceled = new OrderCanceled();
-        BeanUtils.copyProperties(this, orderCanceled);
-        orderCanceled.publishAfterCommit();
-    }
+        }else if(this.reservStatus.equals(RESERVATION_CANCLED)){
+            ReservationCanceled reservationCanceled = new ReservationCanceled();
+            BeanUtils.copyProperties(this, reservationCanceled);
+            reservationCanceled.publishAfterCommit();
+        }
 ```
-- 배송팀에서는 주문/주문취소 접수 이벤트에 대해 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler를 구현한다. 
+- 결제 관리 서비스(payment)에서는 예약 취소 요청 이벤트에 대해 이를 수신하여 결제 취소를 수행하기 위해 PolicyHandler를 구현한다. 
 
 ```
-Service
+@Service
 public class PolicyHandler{
-    @Autowired StockDeliveryRepository stockDeliveryRepository;
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverOrderPlaced_AcceptOrder(@Payload OrderPlaced orderPlaced){
-
-        if(!orderPlaced.validate()) return;
-
-        // delivery 객체 생성 //
-         StockDelivery delivery = new StockDelivery();
-
-         delivery.setOrderId(orderPlaced.getId());
-         delivery.setUserId(orderPlaced.getUserId());
-         delivery.setOrderDate(orderPlaced.getOrderDate());
-         delivery.setPhoneNo(orderPlaced.getPhoneNo());
-         delivery.setProductId(orderPlaced.getProductId());
-         delivery.setQty(orderPlaced.getQty()); 
-         delivery.setDeliveryStatus("delivery Started");
-
-         System.out.println("==================================");
-         System.out.println(orderPlaced.getId());
-         System.out.println(orderPlaced.toJson());
-         System.out.println("==================================");
-         System.out.println(delivery.getOrderId());
-
-         stockDeliveryRepository.save(delivery);
-
-    }
+    @Autowired PaymentRepository paymentRepository;
     
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverOrderCanceled_CancleOrder(@Payload OrderCanceled orderCanceled) {
-    	
-    	if(!orderCanceled.validate()) return;
-... 중략
-        for (StockDelivery delivery:deliveryList)
-        {
-        	System.out.println("\n\n"+orderCanceled.getId());
-            delivery.setDeliveryStatus("delivery Canceled");
-            stockDeliveryRepository.save(delivery);
-        }
-     
+    public void wheneverReservationCancelRequested_PayCancel(@Payload ReservationCancelRequested reservationCancelRequested){
+
+        if(!reservationCancelRequested.validate()) return;
+
+        Payment payment = new Payment();
+
+        payment.setRoomNo(reservationCancelRequested.getRoomNo());
+        payment.setUserId(reservationCancelRequested.getUserId().toString());
+        payment.setUserName(reservationCancelRequested.getUserName());
+        payment.setAmount(reservationCancelRequested.getAmount());
+        payment.setPayDate(reservationCancelRequested.getPayDate());
+        payment.setPayMethod(reservationCancelRequested.getPayMethod());
+        payment.setPayMethod(reservationCancelRequested.getPayMethod());
+        payment.setPayStatus("PayCanceled");
+        
+        System.out.println("\n\n##### listener PayCancel : " + reservationCancelRequested.toJson() + "\n\n");
+
+        paymentRepository.save(payment);
     }
 
 }
 ```
+- 결제 관리 서비스(payment)에서는 예약 취소 완료를 다시 kafa로 pub하여 예약 관리 시스템에서 예약 취소를 최종적으로 수행할 수 있도록 한다. 
+```
+package hotelreservation;
 
+import hotelreservation.config.kafka.KafkaProcessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PolicyHandler{
+    @Autowired ReservationRepository reservationRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverRoomRegistered_InsertRoom(@Payload RoomRegistered roomRegistered){
+
+     ..중략
+        }
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverPayCanceled_updateReservation(@Payload PayCanceled payCanceled){
+
+        if(!payCanceled.validate()) return;
+
+         Reservation reservation = new Reservation();
+         reservation.setRoomId(payCanceled.getRoomId());
+         reservation.setRoomNo(payCanceled.getRoomNo());
+         reservation.setCreateRoomDate(null);
+         reservation.setRoomSize("");
+         reservation.setAmenityInfo("");
+         reservation.setRoomStatus("");
+         reservation.setReservStatus("CancelCompleted");
+         reservation.setPayCompletedYn(payCanceled.getPayCompletedYn());
+         reservation.setUserId(payCanceled.getUserId());
+         reservation.setReservDate(payCanceled.getReservDate());
+         reservation.setUserName(payCanceled.getUserName());
+         reservation.setPeopleQty("");
+         reservation.setReservStartDate(payCanceled.getReservStartDate());
+         reservation.setReservEndDate(payCanceled.getReservEndDate());
+         reservation.setPayMethod(payCanceled.getPayMethod());
+         reservation.setAmount(payCanceled.getAmount());
+         reservation.setPayDate(payCanceled.getPayDate());
+
+         reservationRepository.save(reservation);
+ 
+    }
+
+}
+
+
+```
 
 # SAGA 패턴
 - 취소에 따른 보상 트랜잭션을 설계하였는가?(Saga Pattern)
