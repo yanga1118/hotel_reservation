@@ -526,17 +526,6 @@ reservaiontin.java Entity Class에 @PostPersist로 결제 완료 Req/Resp후에 
 - PaymentService.java
 
 ```
-  
-package food.delivery.work.external;
-
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-
-import food.delivery.work.Promote;
-
-import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(name="payment", url = "${api.Payment.url}", fallback = PaymentServiceFallback.class)
 public interface PaymentService {
