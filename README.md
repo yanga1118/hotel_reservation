@@ -153,26 +153,27 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 ```
 - 과정 중 도출된 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
 - 객실 가능 예약 조회는 예약 서비스 내에서 수행하는 서비스로 이벤트에서 제외함
+- 예약 요청됨/예약 완료 이벤트는 동기식 방식으로, 하나로 Grouping하여 정의
 
 ```
 
-![DDD_3](https://user-images.githubusercontent.com/43808557/135551295-b81c8043-4157-41ca-b1ee-68be73282533.PNG)
-
 ### 액터, 커맨드를 부착하여 읽기 좋게 
 
-![DDD4](https://user-images.githubusercontent.com/43808557/135551425-466d4289-e796-4dd8-bc2c-35831a771af8.PNG)
- 
+![DDD_3](https://user-images.githubusercontent.com/43808557/135551295-b81c8043-4157-41ca-b1ee-68be73282533.PNG)
+
+
 ### 어그리게잇으로 묶기
 
-![5-3](https://user-images.githubusercontent.com/88864433/133556981-a8bfb142-2690-442d-bc92-8d89a3307472.PNG)
- 
+![DDD4](https://user-images.githubusercontent.com/43808557/135551425-466d4289-e796-4dd8-bc2c-35831a771af8.PNG)
+  
 ``` 
 - 고객의 예약 관리 결제 관리, 호텔의 객실관리는 command와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 묶어줌
 ```
 
 ### 바운디드 컨텍스트로 묶기
 
-![6-3](https://user-images.githubusercontent.com/88864433/133557010-ac6b1c40-82b3-4445-8182-0feb50e4dbfb.PNG)
+![DDD5](https://user-images.githubusercontent.com/43808557/135551769-082c6c59-0522-46fb-a2d9-fd7977075a9b.PNG)
+
  
 ```
 - 도메인 서열 분리 
