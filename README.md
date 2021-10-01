@@ -196,7 +196,7 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
  
 ### 완성본에 대한 기능적/비기능적 요구사항을 커버하는지 검증
 
-![시나리오1](https://user-images.githubusercontent.com/43808557/135552697-3a654b58-7e48-4f46-a33e-ca792affb020.png)
+![시나리오1](https://user-images.githubusercontent.com/43808557/135554623-8ccfc1a2-4c0b-4018-a13f-ee61d464008f.png)
 
 ```
 - 호텔의 객실 관리팀은 객실 정보를 등록한다. (ok)
