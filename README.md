@@ -546,29 +546,43 @@ public interface PaymentService {
 
 }
 ```
-
-- PaymentServiceFallback.java
-
+- Payment의 PaymentController.java에서 해당 요청을 처리한다.
 ```
-package hotelreservation.external;
 
-import org.springframework.stereotype.Component;
-import hotelreservation.external.Payment;
+ @RestController
+ public class PaymentController {
+   
+    @Autowired
+    PaymentRepository paymentRepository;
 
-@Component
-public class PaymentServiceFallback implements PaymentService {
- 
-    @Override
-    public boolean pay(Payment payment) {
-        // TODO Auto-generated method stub
-        System.out.println("***************Circuit Breaker***********************************");
-        System.out.println("Circuit breaker has been opened. Thank you for your patience ");
-        System.out.println("***************Circuit Breaker***********************************");
+    @PostMapping(value = "/payRequest")
+     public boolean createpaymentInfo(@RequestBody Map<String, String> param) {
 
-        return false;
+        boolean result = false;
+        Payment payment = new Payment();
+
+        payment.setUserId(param.get("userId"));
+        payment.setUserName(param.get("userName"));
+        payment.setRoomNo(param.get("roomNo"));
+        payment.setAmount(Long.parseLong(param.get("amount"))); 
+        payment.setPayStatus(param.get("payStatus"));
+        payment.setPayMethod(param.get("payMethod"));
+      
+        
+        System.out.println("-------------------------------");
+        System.out.println(param.toString());
+        System.out.println("-------------------------------");
+        try {
+            payment = paymentRepository.save(payment);
+            result = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
     }
-
-}
+     
+ }
 
 ```
 
