@@ -1022,32 +1022,24 @@ public class PaymentServiceFallback implements PaymentService {
 
 
 # Autoscale(HPA)
+
 앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다.
 
-![hpa1](https://user-images.githubusercontent.com/88864433/133547537-2a3d5954-305b-443e-9f06-ecd0913fdc1a.PNG)
+![hpa_전](https://user-images.githubusercontent.com/43808557/135564618-457de1d3-48e7-4ea1-9edc-960e0cf642fa.PNG)
 
-평소에 order pod이 정상적으로 존재하던 중에
+평소에 reservation pod Running 상태로 1개 존재
 
-![hpa2](https://user-images.githubusercontent.com/88864433/133547635-04bbab9e-8373-4e40-94b2-6b23cadab2bb.PNG)
+```
+kubectl autoscale deployment reservation --min=1 --max=10 --cpu-percent=5 
 
-Autoscale 설정 명령어 실행
+```
+Autoscale 설정 명령어 실행 (CPU 5퍼센트로 설정)
 
-![hpa3](https://user-images.githubusercontent.com/88864433/133547683-607efd3d-b1a4-47fc-b3a2-3c19700de609.PNG)
+![hpa](https://user-images.githubusercontent.com/43808557/135563963-bdb91439-b880-4091-8d36-918d622b209e.PNG)
 
 Autoscale 설정됨을 확인
 
-![hpa4](https://user-images.githubusercontent.com/88864433/133547727-9e4fb0bd-cbc9-45d5-ab08-606088272f7c.PNG)
-
-siege 명령어를 수행 
-
-![hpa5](https://user-images.githubusercontent.com/88864433/133547764-705a846d-c211-44b5-ae1f-bbb683fce886.PNG)
-
-CPU 사용량이 5% 이상인 경우 POD는 최대 10개까지 늘어나는 것을 확인
-
-![hpa6](https://user-images.githubusercontent.com/88864433/133547800-ea2c92cc-7733-4605-b58f-bc408a5c635b.PNG)
-
-siege 가용성은 100%을 유지하고 있다.
-
+최종 Pod 증가 확인
 
 # Zero-downtime deploy (Readiness Probe) 
 (무정지 배포) 
@@ -1110,10 +1102,17 @@ Payment의 deployment.yml 파일의 이미지 버전을 v1을 적용하고 siege
 
 - POD가 재시작되었다. 
 
+
 # 운영유연성
+
 - 데이터 저장소를 분리하기 위한 Persistence Volume과 Persistence Volume Claim을 적절히 사용하였는가?
 
+-- EFS(Elastic File System)생성
+
+![EFS](https://user-images.githubusercontent.com/43808557/135567965-94e4992c-3d33-43b6-8477-24a93ab1a4d2.PNG)
+
 - kubectl apply -f efs-provisioner-deploy.yml
+
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -1126,7 +1125,10 @@ spec:
   selector:
     matchLabels:
       app: efs-provisioner
-      ...
+  template:
+    metadata:
+      labels:
+        app: efs-provisioner
     spec:
       serviceAccount: efs-provisioner
       containers:
@@ -1134,26 +1136,27 @@ spec:
           image: quay.io/external_storage/efs-provisioner:latest
           env:
             - name: FILE_SYSTEM_ID
-              value: fs-13229953
+              value: fs-29dc4b49
             - name: AWS_REGION
-              value: ap-southeast-1
+              value: ap-northeast-2
             - name: PROVISIONER_NAME
-              value: my-aws.com/aws-efs
+              value: my-aws.com/yang-efs
           volumeMounts:
             - name: pv-volume
               mountPath: /persistentvolumes
       volumes:
         - name: pv-volume
           nfs:
-            server: fs-13229953.efs.ap-southeast-1.amazonaws.com
+            server: fs-29dc4b49.efs.ap-northeast-2.amazonaws.com
             path: /
+
 ```
 - kubectl apply -f volume-pvc.yml
 ```
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: aws-efs
+  name: yang-efs
   labels:
     app: test-pvc
 spec:
@@ -1162,7 +1165,7 @@ spec:
   resources:
     requests:
       storage: 1Mi
-  storageClassName: aws-efs
+  storageClassName: yang-efs
 ```
 
 - kubectl get pvc
@@ -1170,20 +1173,21 @@ spec:
 
 - deployment.yml
 ```
+   spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reservation
+  template:
+    metadata:
+      labels:
+        app: reservation
     spec:
       containers:
-        - name: order
-          image: 879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/order:latest
+        - name: reservation
+          image: 050229413886.dkr.ecr.ap-southeast-2.amazonaws.com/reservation:latest
           ports:
             - containerPort: 8080
-          readinessProbe:
-            httpGet:
-              path: '/actuator/health'
-              port: 8080
-            initialDelaySeconds: 10
-            timeoutSeconds: 2
-            periodSeconds: 5
-            failureThreshold: 10
 .... 중략
           volumeMounts:
           - name: volume
@@ -1191,20 +1195,23 @@ spec:
         volumes:
         - name: volume
           persistentVolumeClaim:
-            claimName: aws-efs
+            claimName: yang-efs
 ```
 
 - application.yml
 ```
 logging:
-  path: /logs/order
+  path: /logs/payment
   file:
     max-history: 30
   level:
     org.springframework.cloud: debug
 ```
+- Setting 
+
+![pvc setting](https://user-images.githubusercontent.com/43808557/135567967-c3bec960-ed87-4ea4-b595-ac568b9bedcf.PNG)
 
 - 최종 테스트 화면
 
-![pvc_최종](https://user-images.githubusercontent.com/88864433/133479414-111980fb-598b-4e5a-8f13-24255d11f53a.PNG)
+
 
