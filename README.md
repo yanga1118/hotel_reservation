@@ -1038,17 +1038,32 @@ siege 가용성은 100%을 유지하고 있다.
 # Zero-downtime deploy (Readiness Probe) 
 (무정지 배포) 
 
-서비스의 무정지 배포를 위하여 오더(Order) 서비스의 배포 yaml 파일에 readinessProbe 옵션을 추가하였다.
+서비스의 무정지 배포를 위하여 결제 관리(payment) 서비스의 배포 yaml 파일에 readinessProbe 옵션을 추가하였다.
 
-![HPA8](https://user-images.githubusercontent.com/88864433/133559651-9169b961-c0f8-47db-b8df-8b3c274bbd91.PNG)
+```
+  spec:
+      containers:
+        - name: payment
+          image: 050229413886.dkr.ecr.ap-northeast-2.amazonaws.com/payment:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: '/actuator/health'
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 10
+```
 
-![readness1](https://user-images.githubusercontent.com/88864433/133539552-06cc7425-1cb5-4319-b92b-c7c20d807c69.PNG)
+Payment의 deployment.yml 파일의 이미지 버전을 v1을 적용하고 siege를 실행한 상태에서 v2로 변경 배포를 진행하였다. 
 
-파일의 버전이 v1을 적용하고 siege를 실행한 상태에서 v2로 배포를 진행하였다. 
-
-![readness2](https://user-images.githubusercontent.com/88864433/133539593-37ea6cf1-ce76-4d5e-bf21-b6f3ec85079c.PNG)
+![readness_실행](https://user-images.githubusercontent.com/43808557/135561287-2aef116b-2e09-4e60-b503-a6383e1b60d9.PNG)
 
 서비스의 끊김없이 무정지 배포가 실행됨을 확인하였다. 
+
+![readness_최종결과](https://user-images.githubusercontent.com/43808557/135561285-bdea77b8-d746-4fdf-82f8-3455b1d29f80.PNG)
 
 
 # Self-healing (Liveness Probe)
