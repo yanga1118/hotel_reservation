@@ -456,9 +456,8 @@ http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.
 http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders address=“USA” productId=“3001" payStatus=“Y” phoneNo=“01030000" productName=“Mac” productPrice=3000000 qty=1 userId=“goodman” username=“John”
 http POST http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders address=“USA” productId=“3001” payStatus=“Y” phoneNo=“01030000” productName=“Mac” productPrice=3000000 qty=1 userId=“last test” username=“last test”
 [시나리오 2]
-http PATCH http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders/1 orderStatus=“Order Canceled”
-http PATCH http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders/3 orderStatus=“Order Canceled”
-http PATCH http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders/5 orderStatus=“Order Canceled”
+http POST http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservations roomId=A0001 roomNo="101" reservStatus="CancelRequest" userId=0001 reservDate="2021-09-30"  userName="YANG" peopleQty=3 payDate="2021-09-30" amount="200000"  payCompletedYn=true  payMethod="card"  reservStartDate="2021-11-01" reservEndDate="2021-11-03"
+
 [체크]
 http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orders
 http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.amazonaws.com:8080/orderStatus
@@ -689,27 +688,32 @@ public class PolicyHandler{
 
 ```
 
+![취소시나리오](https://user-images.githubusercontent.com/43808557/135556940-db63d2db-631e-4487-a23b-28aa621dcc25.PNG)
+
+```
+- 예약 취소 - 결제 취소 완료 - 예약 취소 완료에 대한 이벤트 Kafa 수신 결과 화면 
+```
+
 # SAGA 패턴
 - 취소에 따른 보상 트랜잭션을 설계하였는가?(Saga Pattern)
 
-상품배송팀의 기능을 수행할 수 없더라도 주문은 항상 받을 수 있게끔 설계하였다. 
-다만 데이터의 원자성을 보장해주지 않기 때문에 추후 order service 에서 재고 정보를 확인한 이후에 주문수락을 진행하거나, 상품배송 서비스에서 데이터 변경전 재고 여부를 확인하여 롤백 이벤트를 보내는 로직이 필요할 것으로 판단된다. 
+결제 관리 서비스의 기능을 수행할 수 없더라도 예약 취소는 항상받을 수 있게끔 설계하였다. 
 
 
-order 서비스가  고객으로 주문 및 결제(order and pay) 요청을 받고
-[order 서비스]
-Order aggegate의 값들을 추가한 이후 주문완료됨(OrderPlaced) 이벤트를 발행한다. - 첫번째 
+Reservation 서비스가  고객으로 예약 취소 요청을 받고
+[Reservation 서비스]
+Reservation aggegate의 값들을 추가한 이후 예약 취소 요청(ReservationCancelRequested) 이벤트를 발행한다. - 첫번째 
 
 ![saga1](https://user-images.githubusercontent.com/88864433/133546289-8b2cf493-7296-4464-944a-1c112f77b500.PNG)
 
 서비스의 트랜젝션 완료
 
-[product delivery 서비스]
+[Payment 서비스]
 
 ![saga2](https://user-images.githubusercontent.com/88864433/133546388-3d5da7c0-8609-4a5b-8143-270b761a7a54.PNG)
 
-주문완료됨(OrderPlaced) 이벤트가 발행되면 상품배송 서비스에서 해당 이벤트를 확인한다.
-재고배송(stockdelivery) 정보를 추가 한다. - 두번째 서비스의 트렌젝션 완료
+예약 취소 요청(ReservationCancelRequested) 이벤트가 발행되면 결제관리 서비스에서 해당 이벤트를 확인한다.
+결제 취소 이벤트를 수행한다. - 두번째 서비스의 트렌젝션 완료
 
 ![saga3](https://user-images.githubusercontent.com/88864433/133546519-f224c831-4a34-4360-bd79-23a5f077949e.PNG)
 
@@ -795,51 +799,10 @@ CQRS가 가능하도록 구현하였다.
 
 - CQRS 테스트 
 
-![CQRS](https://user-images.githubusercontent.com/88864433/133558737-0d82429e-add2-403b-9750-c1a723beeb86.PNG)
-
-
+![CQRS_결과](https://user-images.githubusercontent.com/43808557/135557627-9c342ed4-4a51-409c-8472-103d5168852c.PNG)
 
 
 # 폴리글랏 퍼시스턴스
-- pom.xml
-```
-		<dependency>
-        	<groupId>mysql</groupId>
-        	<artifactId>mysql-connector-java</artifactId>
-        	<scope>provided</scope>
-    	</dependency>
-
-		<dependency>
-		    <groupId>org.javassist</groupId>
-    		<artifactId>javassist</artifactId>
-    		<version>3.25.0-GA</version>
-		</dependency>
-```
-
-application.yml
-```
-
-spring:
-  profiles: docker
-
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://cloud12st.ck7n6wloicx4.ap-northeast-2.rds.amazonaws.com:3306/cloud12st
-    username: root
-    password: cloud#1234
-
-  jpa:
-    open-in-view: false
-    show-sql: true
-    hibernate:
-      format_sql: true
-      ddl-auto: create
-```
-
-- 각 마이크로 서비스들이 각자의 저장소 구조를 자율적으로 채택하고 각자의 저장소 유형 (RDB, NoSQL, File System 등)을 선택하여 구현하였는가?
-
-H2 DB의 경우 휘발성 데이터의 단점이 있는데, productdelivery 서비스의 경우 타 서비스들의 비해 중요하다고 생각하였다.
-productdelivery는 주문과 쿠폰발행/취소를 중간에서 모두 파악하여 처리해야 되기 때문에 백업,복원기능과 안정성이 장점이 있는 mysql을 선택하여 구현하였다.
 
 
 # API 게이트웨이
