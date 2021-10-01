@@ -148,21 +148,19 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 
 ### 부적격 이벤트 탈락
 
-![DDD2](https://user-images.githubusercontent.com/43808557/135542419-fdadb222-0d09-474c-bd84-ddeda717b4bf.PNG)
+![DDD2](https://user-images.githubusercontent.com/43808557/135551208-6fb37744-ddd2-4034-93c6-8dc9a3d02eba.PNG)
 
 ```
 - 과정 중 도출된 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
-- ‘예약 변경됨’, ‘예약 변경 요청됨’ 은 현재 해당 시나리오를 수행하는데 영향이 없을 것으로 예상되어 제외
-- ‘예약 요청됨’, ‘예약 취소 요청됨’ ‘결제 요청됨’, ‘결제 취소 요청됨’ 은 Command의 성격이라 이벤트에서는 제외
+- 객실 가능 예약 조회는 예약 서비스 내에서 수행하는 서비스로 이벤트에서 제외함
 
 ```
 
-![3](https://user-images.githubusercontent.com/88864433/133356499-0fa6c5d6-b0ae-48a5-8e9c-06a5bac07ea1.PNG)
+![DDD_3](https://user-images.githubusercontent.com/43808557/135551295-b81c8043-4157-41ca-b1ee-68be73282533.PNG)
 
 ### 액터, 커맨드를 부착하여 읽기 좋게 
 
-![4-3](https://user-images.githubusercontent.com/88864433/133556941-043ef57c-4c55-49cf-9896-e17d5e11bddd.PNG)
-
+![DDD4](https://user-images.githubusercontent.com/43808557/135551425-466d4289-e796-4dd8-bc2c-35831a771af8.PNG)
  
 ### 어그리게잇으로 묶기
 
