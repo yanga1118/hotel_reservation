@@ -698,25 +698,65 @@ public class PolicyHandler{
 - 취소에 따른 보상 트랜잭션을 설계하였는가?(Saga Pattern)
 
 결제 관리 서비스의 기능을 수행할 수 없더라도 예약 취소는 항상받을 수 있게끔 설계하였다. 
-
-
-Reservation 서비스가  고객으로 예약 취소 요청을 받고
 [Reservation 서비스]
-Reservation aggegate의 값들을 추가한 이후 예약 취소 요청(ReservationCancelRequested) 이벤트를 발행한다. - 첫번째 
 
-![saga1](https://user-images.githubusercontent.com/88864433/133546289-8b2cf493-7296-4464-944a-1c112f77b500.PNG)
+Reservation 서비스가  고객으로  예약 취소 요청을 받고 Reservation aggegate 예약 취소 요청(ReservationCancelRequested) 이벤트를 발행한다. - 첫번째 
 
+```   
+    @PostPersist
+    public void onPostPersist(){
+      
+        Logger logger = LoggerFactory.getLogger(this.getClass());
+        
+        //  Thread.sleep(5000);
+
+         if(this.reservStatus.equals(RESERVATION_APPROVED) ){
+          hotelreservation.external.Payment payment = new hotelreservation.external.Payment();
+                 ////중략
+                }
+            }
+        }else if(this.reservStatus.equals(RESERVATION_CACELREQUEST) ){
+            ReservationCancelRequested reservationCancelRequested = new ReservationCancelRequested();
+            BeanUtils.copyProperties(this, reservationCancelRequested);
+            reservationCancelRequested.publishAfterCommit();
+
+        }
+
+```	
 서비스의 트랜젝션 완료
 
 [Payment 서비스]
 
-![saga2](https://user-images.githubusercontent.com/88864433/133546388-3d5da7c0-8609-4a5b-8143-270b761a7a54.PNG)
+```
+@StreamListener(KafkaProcessor.INPUT)
+    public void wheneverReservationCancelRequested_PayCancel(@Payload ReservationCancelRequested reservationCancelRequested){
 
+```
 예약 취소 요청(ReservationCancelRequested) 이벤트가 발행되면 결제관리 서비스에서 해당 이벤트를 확인한다.
+
+```
 결제 취소 이벤트를 수행한다. - 두번째 서비스의 트렌젝션 완료
 
-![saga3](https://user-images.githubusercontent.com/88864433/133546519-f224c831-4a34-4360-bd79-23a5f077949e.PNG)
 
+        if(!reservationCancelRequested.validate()) return;
+
+        Payment payment = new Payment();
+
+        payment.setRoomNo(reservationCancelRequested.getRoomNo());
+        payment.setUserId(reservationCancelRequested.getUserId().toString());
+        payment.setUserName(reservationCancelRequested.getUserName());
+        payment.setAmount(reservationCancelRequested.getAmount());
+        payment.setPayDate(reservationCancelRequested.getPayDate());
+        payment.setPayMethod(reservationCancelRequested.getPayMethod());
+        payment.setPayMethod(reservationCancelRequested.getPayMethod());
+        payment.setPayStatus("PayCanceled");
+        
+        System.out.println("\n\n##### listener PayCancel : " + reservationCancelRequested.toJson() + "\n\n");
+
+        paymentRepository.save(payment);
+    }
+ 
+```
 
 
 # CQRS
