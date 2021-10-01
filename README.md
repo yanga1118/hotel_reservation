@@ -28,7 +28,7 @@
 # 서비스 시나리오
 	
 [서비스 아키텍쳐]
-객실 관리, 결제, 마케팅팀
+객실 관리, 예약 , 결제 관리
 
 [서비스 시나리오]
 
@@ -42,13 +42,11 @@
 
 4. 고객의 객실 예약 상태를 언제든지 조회할 수 있다. (CQRS)
 
-5. 고객은 객실 예약을 취소 할 수 있다.( pub/sub )
+5. 고객은 객실 예약을 취소할 수 있다.( pub/sub )
 
-6. 고객이 주문을 취소한다.( pub/sub )
+6. 고객이 예약을 취소하면 결제 취소가 된다.( pub/sub )
 
-7. 주문 취소를 하면 결제가 취소 된다. ( pub/sub )
-
-8. 결제가 취소되어야 최종적으로 예약 취소가 완료된다. ( pub/sub )
+7. 결제가 취소되어야 최종적으로 예약 취소가 완료된다. ( pub/sub )
 
 
 
@@ -66,7 +64,7 @@
 
 다. 기타 
 
-1. [설계/구현/운영]polyglot : yo--상품팀과 주문팀은 서로 다른 DB를 사용하여 polyglot을 충족시킨다.
+1. [설계/구현/운영]polyglot :  마이크로 서비스들이 하나이상의 각자의 기술 Stack 으로 구성
 
 
 # 체크포인트
@@ -164,55 +162,54 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 
 ### 어그리게잇으로 묶기
 
-![DDD4](https://user-images.githubusercontent.com/43808557/135551425-466d4289-e796-4dd8-bc2c-35831a771af8.PNG)
-  
+![aggre](https://user-images.githubusercontent.com/43808557/135552599-14c82ffa-c21c-4ee0-bf7b-f50f8c17ec97.PNG)
+
 ``` 
 - 고객의 예약 관리 결제 관리, 호텔의 객실관리는 command와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 묶어줌
 ```
 
 ### 바운디드 컨텍스트로 묶기
 
-![DDD5](https://user-images.githubusercontent.com/43808557/135551769-082c6c59-0522-46fb-a2d9-fd7977075a9b.PNG)
+![bounded](https://user-images.githubusercontent.com/43808557/135552598-a6a0ee40-31c0-4e31-9927-79bf30e33ad3.PNG)
 
  
 ```
 - 도메인 서열 분리 
-    - Core Domain:  order, delivery : 없어서는 안될 핵심 서비스이며, 연간 Up-time SLA 수준을 99.999% 목표, 배포주기는 order의 경우 1주일 1회 미만, delivery의 경우 1개월 1회 미만
-    - Supporting Domain:  marketing : 경쟁력을 내기위한 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포주기는 각 팀의 자율이나 표준 스프린트 주기가 1주일 이므로 1주일 1회 이상을 기준으로 함
+    - Core Domain:  reservation, payment : 없어서는 안될 핵심 서비스이며, 연간 Up-time SLA 수준을 99.999% 목표, 배포주기는 reservation의 경우 1주일 1회 미만, payment의 경우 1개월 1회 미만
+    - Supporting Domain:  room : 호텔 객실에 대한 종합적인 관리를 하는 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포주기는 각 팀의 자율이나 표준 스프린트 주기가 1주일 이므로 1주일 1회 이상을 기준으로 함
 ```
 ### 폴리시 부착
 
 
-![7-3](https://user-images.githubusercontent.com/88864433/133557035-7d121b68-59ee-4816-98bf-35f7fc2bb160.PNG)
- 
+![폴리시 부착](https://user-images.githubusercontent.com/43808557/135552363-f0d75bff-c645-4fc8-8876-4fe329430ba8.PNG)
+
 
 ### 폴리시의 이동과 컨텍스트 맵핑 (점선은 Pub/Sub, 실선은 Req/Resp) 
 
-![8-3](https://user-images.githubusercontent.com/88864433/133557055-ab304be0-37a2-4675-bce0-425281df7301.PNG)
+![pub_sub](https://user-images.githubusercontent.com/43808557/135552578-9cedc146-0ce4-400f-9641-75cd601dfdb2.PNG)
  
 
 ### 완성된 모형
 
-![모델](https://user-images.githubusercontent.com/88864433/133361343-d99b4182-22ac-4881-aeee-19ae121723b5.PNG)
+![원본](https://user-images.githubusercontent.com/43808557/135552627-883e45c4-bfa9-4c62-8b70-f380083cfb0a.png)
+
  
 ### 완성본에 대한 기능적/비기능적 요구사항을 커버하는지 검증
 
-![주문완료검증](https://user-images.githubusercontent.com/88864433/133361542-bc0225f1-d540-42d8-ab1b-f9de9967e84a.PNG)
+![시나리오1](https://user-images.githubusercontent.com/43808557/135552697-3a654b58-7e48-4f46-a33e-ca792affb020.png)
 
 ```
 - 호텔의 객실 관리팀은 객실 정보를 등록한다. (ok)
 - 고객은 결제가 완료하여야, 예약이 완료된다. (ok)
-- 마케팅팀에서 쿠폰을 발행한다 (ok) 
-- 쿠폰이 발행된 것을 확인하고 배송을 시작한다 (ok)
+-  예약이 완료되면 호텔에 방이 charge 상태로 변경된다. ( ok)
 ```
-![주문취소검증](https://user-images.githubusercontent.com/88864433/133361562-11bef187-a52e-4948-a429-995d76d4424d.PNG)
+![시나리오2](https://user-images.githubusercontent.com/43808557/135552693-c0935e08-7f4a-4c93-8a96-460a6c76a2e8.png)
 
 ``` 
-- 고객이 주문을 취소할 수 있다 (ok)
-- 주문을 취소하면 결제도 함께 취소된다 (ok)
-- 주문이 취소되면 배송팀에 전달된다 (ok)
-- 마케팅팀에서 쿠폰발행을 취소한다 (ok)
-- 쿠폰발행이 취소되면 배송팀에서 배송을 취소한다 (ok)
+- 고객이 예약을 취소할 수 있다 (ok)
+- 고객이 예약을 취소하면 결제가 취소된다 (ok)
+- 결제 취소가 완료되면, 예약 취소가 완료된다. (ok)
+
 ```
 
 ### 비기능 요구사항에 대한 검증 (5개가 맞는지 검토 필요)
@@ -220,27 +217,26 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 ![비기능적 요구사항2](https://user-images.githubusercontent.com/88864433/133557381-ccd4b060-9193-4c38-a8a2-6cd8f846545a.PNG)
 
 ```
-1. [설계/구현]Req/Resp : 쿠폰이 발행된 건에 한하여 배송을 시작한다. 
-2. [설계/구현]CQRS : 고객이 주문상태를 확인 가능해야한다.
-3. [설계/구현]Correlation : 주문을 취소하면 -> 쿠폰을 취소하고 -> 배달을 취소 후 주문 상태 변경
-4. [설계/구현]saga : 서비스(상품팀, 상품배송팀, 마케팅팀)는 단일 서비스 내의 데이터를 처리하고, 각자의 이벤트를 발행하면 연관된 서비스에서 이벤트에 반응하여 각자의 데이터를 변경시킨다.
-5. [설계/구현/운영]circuit breaker : 배송 요청 건수가 임계치 이상 발생할 경우 Circuit Breaker 가 발동된다. 
+1. [설계/구현]Req/Resp : 결제가 반드시 완료되야 예약이 완료된다.
+2. [설계/구현]CQRS : 고객이 예약 정보를 언제든지 확인 할 수 있다.
+3. [설계/구현]Correlation : 예약을 취소하면 -> 결제를 취소하고 -> 예약 취소가 완료된다.
+4. [설계/구현]saga : 서비스(객실 관리, 결제 관리, 예약 관리)는 단일 서비스 내의 데이터를 처리하고, 각자의 이벤트를 발행하면 연관된 서비스에서 이벤트에 반응하여 각자의 데이터를 변경시킨다.
+5. [설계/구현/운영]circuit breaker : 결제 요청 건수가 임계치 이상 발생할 경우 Circuit Breaker 가 발동된다. 
 ``` 
 
-### 헥사고날 아키텍처 다이어그램 도출 (그림 수정필요없는지 확인 필요)
+### 헥사고날 아키텍처 다이어그램 도출
 
-![분산스트림2](https://user-images.githubusercontent.com/88864433/133557657-451e67e9-400a-477c-af09-2bfd56f9a659.PNG)
- 
+![hexa](https://user-images.githubusercontent.com/43808557/135553157-0485ba39-d569-43f2-8e37-228e5edd170f.PNG)
 
 ```
 - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
 - 호출관계에서 PubSub 과 Req/Resp 를 구분함
-- 서브 도메인과 바운디드 컨텍스트의 분리:  각 팀의 KPI 별로 아래와 같이 관심 구현 스토리를 나눠가짐
 ```
 
 # 구현
 
-- 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 바운더리 컨텍스트 별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
+- 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 바운더리 컨텍스트 별로 대변되는 마이크로 서비스들을 Spirng-boot로 구현함.
+- 구현한 각 서비스를 로컬에서 실행하는 방법. (각자의 포트넘버는 8081 ~ 808n 이다)
 
 ```
 cd room
@@ -254,6 +250,7 @@ mvn spring-boot:run
 ```
 
 # DDD의 적용
+
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 데이터 접근 어댑터를 개발하였는가? 
 
 각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다. (객실관리(room), 예약(reservation), 결제(paymnet)) 
@@ -386,96 +383,68 @@ public class Payment {
       }
     }
 ```
+결제 PaymentRepository.java
 ```
-@Entity
-@Table(name="StockDelivery_table")
-public class StockDelivery {
+package hotelreservation;
 
-     //Distance 삭제 및 Id auto로 변경
-    
-    private Long orderId;
-    private String orderStatus;
-    private String userName;
-    private String address;
-    private String productId;
-    private Integer qty;
-    private String storeName;
-    private Date orderDate;
-    private Date confirmDate;
-    private String productName;
-    private String phoneNo;
-    private Long productPrice;
-    @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    private Long id;
-    private String customerId;
-    private String deliveryStatus;
-    private Date deliveryDate;
-    private String userId;
-    
-    private static final String DELIVERY_STARTED = "delivery Started";
-    private static final String DELIVERY_CANCELED = "delivery Canceled";
-... 생략 
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+import org.springframework.data.repository.CrudRepository;
+
+@RepositoryRestResource(collectionResourceRel="payments", path="payments")
+public interface PaymentRepository extends CrudRepository<Payment, Long>{
+
+
+}
+
 ```
 
-마케팅의 promote.java 
+호텔의 Room Enitity
 
 ``` 
+
 @Entity
-@Table(name="Promote_table")
-public class Promote {
+@Table(name="RoomInfo_table")
+public class RoomInfo {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private String phoneNo;
-    private String username;
-    private Long orderId;
-    private String orderStatus;
-    private String productId;
-    private String payStatus;
-    private String couponId;
-    private String couponKind;
-    private String couponUseYn;
-    private String userId;
+    private String roomId;
+    private String roomNo;
+    private String viewInfo;
+    private String status;
+    private String roomSize;
+    private Date createDate;
+    private String amenityInfo;
+    private Date reservStartDate;
+    private Date reservEndDate;
 
     @PostPersist
     public void onPostPersist(){
-        CouponPublished couponPublished = new CouponPublished();
-        BeanUtils.copyProperties(this, couponPublished);
-        couponPublished.publishAfterCommit();
+        RoomRegistered roomRegistered = new RoomRegistered();
+        BeanUtils.copyProperties(this, roomRegistered);
+        roomRegistered.publishAfterCommit();
 
     }
 
-	public Long getId() {
-		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public String getPhoneNo() {
-		return phoneNo;
-	}
-.... 생략 
+```
+RoomInfoRepository.java
 
 ```
+package hotelreservation;
 
-PromoteRepository.java
-
-```
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-public interface PromoteRepository extends PagingAndSortingRepository<Promote, Long>{
 
-	List<Promote> findByOrderId(Long orderId);
+@RepositoryRestResource(collectionResourceRel="roomInfos", path="roomInfos")
+public interface RoomInfoRepository extends PagingAndSortingRepository<RoomInfo, Long>{
 
 }
+
 ```
 
 - 분석단계에서의 유비쿼터스 랭귀지 (업무현장에서 쓰는 용어) 를 사용하여 소스코드가 서술되었는가?
-가능한 현업에서 사용하는 언어를 모델링 및 구현시 그대로 사용하려고 노력하였다. 
+가능한 현업에서 많이 사용하는 Java와 Spring 기반의 기술을 사용하여 소스 
 
 - 적용 후 Rest API의 테스트
 주문 결제 후 productdelivery 주문 접수하기 POST
@@ -504,47 +473,59 @@ http GET http://aedb7e1cae2d84953b471cb6b57ed58f-1249713815.ap-southeast-1.elb.a
 
 - 마이크로 서비스간 Request-Response 호출에 있어 대상 서비스를 어떠한 방식으로 찾아서 호출 하였는가? (Service Discovery, REST, FeignClient)
 
-요구사항대로 배송팀에서는 쿠폰이 발행된 것을 확인한 후에 배송을 시작한다.
+요구사항대로 결제가 완료되어야 예약이 완료되도록 구현한다.
 
-StockDelivery.java Entity Class에 @PostPersist로 쿠폰 발행 후에 배송을 시작하도록 처리하였다.
+reservaiontin.java Entity Class에 @PostPersist로 쿠폰 발행 후에 배송을 시작하도록 처리하였다.
 
-```
+``` 
+    
     @PostPersist
-    public void onPostPersist() throws Exception{
-
-    	Promote promote = new Promote();
-        promote.setPhoneNo(this.phoneNo); 
-        promote.setUserId(this.userId); 
-        promote.setUsername(this.userName); 
-        promote.setOrderId(this.orderId); 
-        promote.setOrderStatus(this.orderStatus); 
-        promote.setProductId(this.productId); 
-        System.out.println("\n\npostpersist() : "+this.deliveryStatus +"\n\n");
-        // deliveryStatus 따라 로직 분기
-        if(DELIVERY_STARTED == this.deliveryStatus){
-        	
-	        boolean result = (boolean) ProductdeliveryApplication.applicationContext.getBean(food.delivery.work.external.PromoteService.class).publishCoupon(promote);
-	
-	        if(result){
-	        	System.out.println("----------------");
-	            System.out.println("Coupon Published");
-	            System.out.println("----------------");
-		       	DeliveryStarted deliveryStarted = new DeliveryStarted();
-		        BeanUtils.copyProperties(this, deliveryStarted);
-		        deliveryStarted.publishAfterCommit();
-	        }else {
-	        	throw new RollbackException("Failed during coupon publish");
-	        }
+    public void onPostPersist(){
+      
+        Logger logger = LoggerFactory.getLogger(this.getClass());
         
-        }
-  
-    }
+         if(this.reservStatus.equals(RESERVATION_APPROVED) ){
+          hotelreservation.external.Payment payment = new hotelreservation.external.Payment();
+
+          payment.setUserId(this.userId);
+          payment.setUserName(this.userName);
+          payment.setRoomNo(this.roomNo);
+          payment.setAmount(this.amount);
+          payment.setPayMethod(this.payMethod);
+          payment.setPayCompltedYn(this.payCompletedYn);
+          payment.setPayStatus("PayReqeust");
+          payment.setReservEndDate(this.reservStartDate);
+          payment.setReservEndDate(this.reservEndDate);
+
+          //RES/REQ 
+          boolean result = ReservationApplication.applicationContext.getBean(hotelreservation.external.PaymentService.class).pay(payment);
+          if(result){
+             try {
+                    Date nowDate = new Date();
+                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd a HH:mm:ss"); 
+                    String date = simpleDateFormat.format(nowDate);
+                    
+                    ReservationCompleted reservationCompleted = new ReservationCompleted();
+                    this.setReservDate(simpleDateFormat.parse(date));
+                    this.setPayDate(simpleDateFormat.parse(date));
+                    this.setPayCompletedYn(true);
+                    this.setRoomStatus("Charged");
+                    this.setReservStatus("Completed");
+       
+                    BeanUtils.copyProperties(this, reservationCompleted);
+                    reservationCompleted.publishAfterCommit();
+
+                } catch (ParseException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
     
 ```
 
-##### 동기식 호출은 PromoteService 클래스를 두어 FeignClient 를 이용하여 호출하도록 하였다.
+##### 동기식 호출은 PaymentService 클래스를 두어 FeignClient 를 이용하여 호출하도록 하였다.
 
-- PromoteService.java
+- PaymentService.java
 
 ```
   
@@ -559,45 +540,38 @@ import food.delivery.work.Promote;
 
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name="marketing", url = "${api.promote.url}", fallback = PromoteServiceFallback.class)
-public interface PromoteService {
-  
-    @RequestMapping(method=RequestMethod.POST, path="/createPromoteInfo")
-    public boolean publishCoupon(@RequestBody Promote promote);
-    
-    @RequestMapping(method=RequestMethod.POST, path="/cancelCoupon")
-    public boolean cancelCoupon(@RequestBody Promote promote);
+@FeignClient(name="payment", url = "${api.Payment.url}", fallback = PaymentServiceFallback.class)
+public interface PaymentService {
+
+    @RequestMapping(method=RequestMethod.POST, path="/payRequest")
+    public boolean pay(@RequestBody Payment payment);
+
 }
 ```
 
-- PromoteServiceFallback.java
+- PaymentServiceFallback.java
 
 ```
-  
-package food.delivery.work.external;
+package hotelreservation.external;
 
 import org.springframework.stereotype.Component;
-
-import food.delivery.work.Promote;
+import hotelreservation.external.Payment;
 
 @Component
-public class PromoteServiceFallback implements PromoteService {
+public class PaymentServiceFallback implements PaymentService {
+ 
     @Override
-    public boolean publishCoupon(Promote promote) {
-        //do nothing if you want to forgive it
+    public boolean pay(Payment payment) {
+        // TODO Auto-generated method stub
+        System.out.println("***************Circuit Breaker***********************************");
+        System.out.println("Circuit breaker has been opened. Thank you for your patience ");
+        System.out.println("***************Circuit Breaker***********************************");
 
-        System.out.println("Circuit breaker has been opened. Fallback returned instead.");
         return false;
     }
-    
-    @Override
-    public boolean cancelCoupon(Promote promote) {
-        //do nothing if you want to forgive it
 
-        System.out.println("Circuit breaker has been opened. Fallback returned instead.");
-        return false;
-    }
 }
+
 ```
 
 
@@ -607,7 +581,7 @@ public class PromoteServiceFallback implements PromoteService {
 
 - 카프카를 이용하여 PubSub 으로 하나 이상의 서비스가 연동되었는가?
 
-주문/주문취소 후에 이를 배송팀에 알려주는 트랜잭션은 Pub/Sub 관계로 구현하였다.
+예약 취소 요청 후 결제 취소 후에 이를 다시 예약팀에 결제 취소배송팀에 알려주는 트랜잭션은 Pub/Sub 관계로 구현하였다.
 아래는 주문/주문취소 이벤트를 통해 kafka를 통해 배송팀 서비스에 연계받는 코드 내용이다. 
 
 ```
