@@ -1063,6 +1063,7 @@ Payment의 deployment.yml 파일의 이미지 버전을 v1을 적용하고 siege
 
 # Self-healing (Liveness Probe)
 
+```
   spec:
       containers:
         - name: payment
@@ -1079,6 +1080,7 @@ Payment의 deployment.yml 파일의 이미지 버전을 v1을 적용하고 siege
             timeoutSeconds: 2
             periodSeconds: 5
             failureThreshold: 5
+```
 
 - 잘못된 포트로 변경하여 yml을 배포
  : port -> 9999로 변경하여 배포
