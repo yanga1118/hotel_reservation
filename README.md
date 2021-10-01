@@ -214,7 +214,7 @@ https://www.msaez.io/#/storming/7znb05057kPWQo1TAWCkGM0O2LJ3/5843d1078a788a01aa8
 
 ### 비기능 요구사항에 대한 검증 (5개가 맞는지 검토 필요)
 
-![비기능적 요구사항2](https://user-images.githubusercontent.com/88864433/133557381-ccd4b060-9193-4c38-a8a2-6cd8f846545a.PNG)
+![비기능 요구](https://user-images.githubusercontent.com/43808557/135558724-98d29a9b-587d-4769-9210-75291d353481.PNG)
 
 ```
 1. [설계/구현]Req/Resp : 결제가 반드시 완료되야 예약이 완료된다.
@@ -796,6 +796,14 @@ CQRS가 가능하도록 구현하였다.
 
 결제 및 예약이 완료되면 해당 정보를 확인할 수 있다.
 
+
+```
+- 예약 완료 후 reservationView 확인
+
+http GET http://a1a0770d509a8456d801d4fce80f93d2-922306400.ap-northeast-2.elb.amazonaws.com:8080/reservationViews/2
+
+
+```
 
 - CQRS 테스트 
 
